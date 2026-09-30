@@ -39,6 +39,56 @@ created, emitted or handed over.
   Values discovery verified (a reused `deployment_id`, an existing warehouse's name) may be written
   literally.
 
+## Support: what these tools can connect, and how
+
+Check every requested integration **before** asking about its deployment or credentials, and use
+the same reads to tell the customer what can be added. Supported types change as the API grows,
+so this section says how to discover them; it does not list them.
+
+| Where the secret lives | How the credentials are created | Which types |
+|---|---|---|
+| The customer's own store, read by a collection agent | MCP tools: `create_aws_secrets_manager_credentials`, `create_gcp_secret_manager_credentials`, `create_azure_key_vault_credentials`, `create_env_var_credentials`, `create_file_credentials`. Only a reference is passed. | A type that is itself a value of `create_warehouse`'s `type` list in this session. Any other connection type is settled as described below the table. |
+| Monte Carlo stores it (managed) | **Not an MCP tool**: the request carries the secret. A CLI or Terraform step the customer runs (rule 6). | A type with a `get_<type>_credentials` or `delete_<type>_credentials` tool in this session, or listed by `montecarlo credentials create --help` when the customer has mc-cli. |
+| Neither | — | Hand off to the UI (Settings → Integrations). |
+
+- **CRITICAL: discover types from this session, NEVER from memory or from examples in these
+  references.** The managed getter/delete tools can lag the API; when they and the customer's
+  `montecarlo credentials create --help` disagree, the CLI is newer.
+- **CRITICAL: a connection type that is not itself a warehouse `type` is settled by the API, not
+  by you.** The tools do not publish which warehouse type a connection type maps to, and several
+  connection types share one. So such a type counts as supported only when one of these shows it:
+  - an existing connection of that type in this account (`list_connections` returns
+    `connection_type`), whose warehouse type is then known; or
+  - the Monte Carlo docs page for that integration, read in this session, saying it connects
+    through a collection agent with self-hosted credentials.
+
+  Otherwise tell the customer support is unconfirmed. When the route **reuses** an existing
+  deployment, it can proceed: `create_warehouse(connection_type=<type>)` refuses a type it cannot
+  map and creates nothing, so that call is the check; on a refusal, hand off to the UI. When the
+  route needs a **new** deployment or agent, NEVER provision it for an unconfirmed type; offer the
+  UI instead. NEVER create a warehouse or connection only to probe support.
+- **CRITICAL: the options above are the whole menu.** Offer them in customer language (for
+  example "a file on your machine that a command you run reads", "a secret in your AWS Secrets
+  Manager, by its name or ARN"). NEVER offer, accept or suggest typing a password, key or token
+  into the chat, and NEVER offer to read one from a file, a secret store or anywhere else.
+- **IMPORTANT: the credential choice can decide the deployment.** A self-hosted reference needs a
+  collection agent; a secret file on the customer's machine means Monte Carlo-managed credentials,
+  which only managed types have. Say which deployment an answer implies instead of asking the
+  deployment question separately, and ask it only when both fit.
+- **IMPORTANT: only some agent routes need no local Monte Carlo command.** When the customer
+  wants to finish in the chat, or cannot run mc-cli or Terraform, recommend a collection agent
+  with a self-hosted reference only when every remaining setup operation of that route is an MCP
+  tool: reusing an enabled agent that fits, or a new AWS agent (registration is an MCP tool; the
+  customer can deploy the stack with the CloudFormation template instead of the Terraform
+  module). A new GCP or Azure agent (registration carries the agent's credentials) and a new
+  Generic agent (its token or OAuth client is minted by an mc-cli or Terraform step) still need
+  one. Check the whole route before recommending it. When none fits, hand the step off to the UI
+  or to a teammate or admin who can run mc-cli or Terraform; NEVER create a deployment the
+  customer cannot finish. Their own infrastructure step (deploying the agent, storing the secret)
+  still runs on their side.
+- NEVER provision a deployment or agent for an integration before it passes this check. An agent
+  built for an unsupported type is a deployment with nothing behind it (SKILL.md rule 3).
+
 ## Deployment inputs
 
 | Path | Required | Source and checks |
@@ -54,7 +104,21 @@ created, emitted or handed over.
 
 ## Credential inputs by path
 
-### Monte Carlo-managed Snowflake key pair
+### Monte Carlo-managed credentials
+
+The inputs of a managed type are the parameters of its create operation: the flags of
+`montecarlo credentials create <type> --help`, or the arguments of the Terraform resource
+`montecarlo_<type>_credentials`. The secret fields are the ones with a `--<field>-prompt` flag in
+the CLI and a `<field>_wo` argument in Terraform.
+
+- **CRITICAL: a secret field is NEVER written as a literal value.** In the CLI it is `@<path>` (read
+  from a file) or `--<field>-prompt` (hidden prompt); a literal is visible in the process list and
+  shell history. In Terraform it is the `<field>_wo` argument (SKILL.md rule 7).
+- Every other field follows the rules above: from the customer or discovery, never a default.
+
+The Snowflake key pair below is the worked example; other managed types follow the same pattern.
+
+#### Example: Snowflake key pair
 
 | Input | Required | Notes |
 |---|---|---|
@@ -133,3 +197,9 @@ For a type not listed, read its section on that page and apply the same rule bef
 - Writing a Terraform variable with an example `default`, so `plan` never asks for the real value.
 - Discovering over one Monte Carlo account and generating an artifact whose profile reaches another.
 - Treating a secret reference as complete without confirming the secret carries the type's keys.
+- Asking about deployments or credentials before checking the integration is supported, then
+  discovering after an agent is provisioned that the type is UI-only on the chosen route.
+- Telling the customer a type is unsupported (or supported) from memory instead of from this
+  session's `create_warehouse` schema and managed credential tools.
+- Writing a managed secret as a literal CLI value instead of `@<path>` or `--<field>-prompt`.
+- Creating one deployment per integration when several fit the same one.

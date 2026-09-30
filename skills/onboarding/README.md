@@ -11,25 +11,39 @@ the Monte Carlo MCP server.
 When you ask to connect Snowflake, BigQuery, Redshift, Databricks or any other supported platform,
 the skill:
 
-1. Discovers existing deployments and connections, identifies the target platform/cloud/region,
-   and asks only for missing requirements: connection origin, credential custody and sample storage.
-2. Reuses a suitable Cloud Deployment, Cloud with Customer-hosted Data Store Deployment, or
+1. Discovers existing deployments, agents, data stores, warehouses and connections, shows you
+   that inventory and what can be added (which integrations each kind of deployment supports and
+   with which credential options), then asks what you want to connect. One run can onboard
+   several integrations; each is checked for support before any other question about it.
+2. Identifies the target platform/cloud/region and asks only for missing requirements:
+   connection origin, credential custody and sample storage.
+3. Reuses a suitable Cloud Deployment, Cloud with Customer-hosted Data Store Deployment, or
    Customer-hosted Agent & Data Store Deployment. Where an agent is needed, distinguishes
    cloud-native inbound agents from the outbound Generic Agent (Docker/Kubernetes, preview).
    PrivateLink may support direct Cloud or an agent's connection to the integration; support
    depends on the integration, cloud and region, and the customer's origin policy still applies.
-3. References self-hosted credentials or hands over a local CLI/Terraform step for a managed
-   Snowflake key pair. **No secret passes through chat.** See *How credentials are handled*.
-4. Reconciles the intended warehouse and connection before creating anything missing.
-5. Validates the connection over MCP and reports each check's result, falling back to the UI test
+4. References self-hosted credentials or hands over a local CLI/Terraform step for Monte
+   Carlo-managed credentials (a Snowflake key pair, for example). **No secret passes through chat.** See *How credentials are handled*.
+5. Reconciles the intended warehouse and connection before creating anything missing.
+6. Validates the connection over MCP and reports each check's result, falling back to the UI test
    only when the session does not serve the validation tools.
-6. Ends with created/reused IDs, the validation result, a scoped cleanup order and the next
+7. Ends with created/reused IDs, the validation result, a scoped cleanup order and the next
    pending step. Creation alone is not a completed onboarding.
 
-The assistant guides the requested connection by default. Steps you run yourself use
-[mc-cli](https://github.com/monte-carlo-data/mc-cli), the `montecarlo` command for the REST API
-v2, unless you ask for Terraform or an SDK script instead. Missing MCP operations use the same
-local handoff, with non-secret results reconciled before continuing. Sample storage choices do not relocate metadata, metrics
+The assistant uses the MCP tools for every step they serve. A step moves to your machine only
+when it carries a secret, or its tool is not served: you get the
+[mc-cli](https://github.com/monte-carlo-data/mc-cli) command (`montecarlo`, the REST API v2 CLI)
+and the equivalent Terraform resource side by side, you run the one you prefer, and you give back
+only the non-secret result. The assistant never runs it for you, even when it has a shell and
+you gave it the file's path. Ask for Terraform or an SDK script for the whole onboarding instead,
+if you prefer.
+
+Supported integrations are read from the tools in your session rather than listed in the skill:
+the `create_warehouse` schema (plus existing connections or the integration's docs page, for a
+connection type that is not itself a warehouse type) for integrations connected through a
+collection agent, and the
+Monte Carlo-managed credential tools (or `montecarlo credentials create --help`) for credentials
+Monte Carlo stores. A type in neither is handed off to the UI. Sample storage choices do not relocate metadata, metrics
 or query logs from Monte Carlo.
 
 ## How credentials are handled
@@ -92,7 +106,8 @@ connection for the intended account. The workflow requires no particular assista
 
 ## Not yet
 
-- **Azure and GCP agent/data-store registration, generic agent credentials, Snowflake key pair.**
+- **Azure and GCP agent/data-store registration, generic agent credentials, Monte Carlo-managed
+  warehouse credentials (such as the Snowflake key pair).**
   Their requests or responses carry a secret, so they are CLI/Terraform steps rather than MCP
   tools, by design (see *How credentials are handled*).
 

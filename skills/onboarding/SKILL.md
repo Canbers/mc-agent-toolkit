@@ -1,17 +1,18 @@
 ---
 name: monte-carlo-onboarding
-description: Connect a warehouse to Monte Carlo using API v2 tools. Discover or provision deployments, reference credentials, reuse or create the connection, and validate it. Use when asked to connect a platform or onboard a warehouse, including generating the Terraform or a script for it.
+description: Connect warehouses to Monte Carlo with API v2 tools: show existing deployments and what can be added, reference credentials, create and validate connections. Use to connect or onboard platforms, or to generate the Terraform or a script for it.
 metadata:
   bucket: Setup
 ---
 
 # Monte Carlo Onboarding
 
-Walk a customer from "connect `<warehouse>` to Monte Carlo" to a working connection, using the
-Monte Carlo MCP tools for deployments, credentials, warehouses and connections. Discover what already exists, resolve only the missing
-customer decisions, and reuse or provision
-the deployment before creating a connection. A request to connect Snowflake does not imply that
-the customer knows which deployment or collection agent they need.
+Walk a customer from "connect `<warehouse>` to Monte Carlo" to working connections, one or
+several, using the Monte Carlo MCP tools for deployments, credentials, warehouses and
+connections. Start by showing what already exists and what can be added, then resolve only the
+missing customer decisions, and reuse or provision the deployment before creating a connection.
+A request to connect Snowflake does not imply that the customer knows which deployment or
+collection agent they need.
 
 ## Tools and supporting references
 
@@ -48,8 +49,8 @@ instrument-agent; for an already-connected warehouse's monitoring use monitoring
    even to "double-check".
 2. **No secret ever travels through the chat or a tool argument.** Not a private key, password,
    service-account key, token, or passphrase. Credentials the customer hosts are *referenced*
-   (secret name, ARN, vault, variable name, file path). Credentials Monte Carlo must hold (a
-   Snowflake key pair, a generic agent token) are created by a CLI or Terraform step the customer
+   (secret name, ARN, vault, variable name, file path). Credentials Monte Carlo must hold (managed
+   warehouse credentials such as a Snowflake key pair, a generic agent token) are created by a CLI or Terraform step the customer
    runs on their own machine. The reason is structural, not a preference: whatever a tool receives
    the model has to write into the call, and whatever a tool returns the model reads, so a secret
    in either direction lands in the model's context, the transcript and the logs of every system
@@ -73,14 +74,22 @@ instrument-agent; for an already-connected warehouse's monitoring use monitoring
    again for each call. Confirm a change of scope or a destructive action separately.
 5. **Every run ends with the summary** in *Step 6*, whether it completed, stopped early, or hit an
    error. Ids created by this run are the customer's cleanup list.
-6. **Local steps use mc-cli.** Every step the customer runs themselves, including the operations
-   that are not MCP tools, is written for [mc-cli](https://github.com/monte-carlo-data/mc-cli), the
-   `montecarlo` command for the REST API v2. It covers every operation the tools here do, plus the
-   ones that carry a secret, and returns the same ids, so the summary stays consistent. Recommend it by default; emit Terraform
-   instead when the customer asks for it or already manages this infrastructure with Terraform,
-   and a Python script over the SDK only when they ask for one. Setup and commands are in the
-   output-modes reference. Two cautions to pass on: the legacy `montecarlodata` Python CLI
-   installs a command with the same name, so have the customer confirm with
+6. **MCP tools first; a local step only when a secret is involved.** Use the MCP tools for every
+   operation they serve. A step moves to the customer's machine only when its request or response
+   carries a secret (the operations listed under *Tools*), or when a tool the run needs is not
+   served in this session. For that step, offer both forms side by side and let the customer
+   choose: the [mc-cli](https://github.com/monte-carlo-data/mc-cli) command (`montecarlo`, the
+   REST API v2 CLI) and the equivalent Terraform resource. Write a Python script over the SDK
+   only when asked, and emit a whole Terraform artifact instead of acting when the customer asks
+   for one or already manages this infrastructure with Terraform. **The customer runs the
+   command, never you**, even when this session has a shell and the customer gave the file's
+   path: running it puts the file within reach of your tools, and an error can print the secret
+   into the transcript (rule 2). Ask only for the non-secret result, such as the credentials id.
+   If the customer cannot run mc-cli or Terraform, say the step is completed in the UI, or
+   recommend a collection agent with a self-hosted reference when its whole setup is served by
+   tools (connection-inputs reference, support section). Setup and commands are in the
+   output-modes reference. Two cautions to pass on: the legacy `montecarlodata`
+   Python CLI installs a command with the same name, so have the customer confirm with
    `montecarlo deployments --help` that the REST API CLI is the one on their path; and the
    profile is set by the customer with `montecarlo profile set … --api-token-prompt`, never by
    pasting a token here.
@@ -110,7 +119,7 @@ instrument-agent; for an already-connected warehouse's monitoring use monitoring
 | Deployment | `list_deployments`, `get_deployment`, `create_deployment`, `update_deployment`, `delete_deployment` |
 | Agent | `list_collection_agents`, `register_aws_collection_agent`, `register_generic_collection_agent`, `get_aws_collection_agent`, `get_gcp_collection_agent`, `get_azure_collection_agent`, `get_generic_collection_agent`, `update_aws_collection_agent`, `update_generic_collection_agent`, `delete_aws_collection_agent`, `delete_gcp_collection_agent`, `delete_azure_collection_agent`, `delete_generic_collection_agent`, `delete_generic_collection_agent_token`, `delete_generic_collection_agent_oauth_client` |
 | Data store | `list_collection_data_stores`, `register_aws_collection_data_store`, `get_aws_collection_data_store`, `get_gcp_collection_data_store`, `get_azure_collection_data_store`, `update_aws_collection_data_store`, `delete_aws_collection_data_store`, `delete_gcp_collection_data_store`, `delete_azure_collection_data_store` |
-| Credentials | `list_credentials`, `create_aws_secrets_manager_credentials`, `create_gcp_secret_manager_credentials`, `create_azure_key_vault_credentials`, `create_env_var_credentials`, `create_file_credentials`, `get_snowflake_credentials`, `update_aws_secrets_manager_credentials`, `update_gcp_secret_manager_credentials`, `update_azure_key_vault_credentials`, `update_env_var_credentials`, `update_file_credentials`, `delete_snowflake_credentials`, `delete_aws_secrets_manager_credentials`, `delete_gcp_secret_manager_credentials`, `delete_azure_key_vault_credentials`, `delete_env_var_credentials`, `delete_file_credentials`, `validate_aws_secrets_manager_credentials`, `validate_gcp_secret_manager_credentials`, `validate_azure_key_vault_credentials`, `validate_env_var_credentials`, `validate_file_credentials` |
+| Credentials | `list_credentials`, `create_aws_secrets_manager_credentials`, `create_gcp_secret_manager_credentials`, `create_azure_key_vault_credentials`, `create_env_var_credentials`, `create_file_credentials`, `get_<type>_credentials` for each managed type served (for example `get_snowflake_credentials`), `update_aws_secrets_manager_credentials`, `update_gcp_secret_manager_credentials`, `update_azure_key_vault_credentials`, `update_env_var_credentials`, `update_file_credentials`, `delete_<type>_credentials` for each managed type served (for example `delete_snowflake_credentials`), `delete_aws_secrets_manager_credentials`, `delete_gcp_secret_manager_credentials`, `delete_azure_key_vault_credentials`, `delete_env_var_credentials`, `delete_file_credentials`, `validate_aws_secrets_manager_credentials`, `validate_gcp_secret_manager_credentials`, `validate_azure_key_vault_credentials`, `validate_env_var_credentials`, `validate_file_credentials` |
 | Warehouse | `list_warehouses`, `get_warehouse`, `create_warehouse`, `update_warehouse`, `delete_warehouse` |
 | Connection | `list_connections`, `get_connection`, `create_connection`, `update_connection`, `delete_connection` |
 | Identity | `get_current_user` (which account you are in, and whether it is paused) |
@@ -119,7 +128,8 @@ instrument-agent; for an already-connected warehouse's monitoring use monitoring
 By design, no MCP tool accepts or returns a secret (rule 2). Operations whose request or response
 carries one are **not MCP tools** and are handed to the customer as a CLI or Terraform step, which
 reads the secret from a file on their machine and sends it to Monte Carlo directly:
-`create_snowflake_credentials`, `validate_snowflake_credentials`, the Azure and GCP agent and
+`create_<type>_credentials`, `update_<type>_credentials` and `validate_<type>_credentials` for
+every Monte Carlo-managed type (the Snowflake key pair among them), the Azure and GCP agent and
 data-store registrations, `create_generic_collection_agent_token` and
 `create_generic_collection_agent_oauth_client`. The reference files mark them.
 
@@ -130,15 +140,46 @@ request only its non-secret result/IDs and reconcile them before continuing. If 
 local-client path is available, explain the pending step and who can complete it. A reference
 entry or an open implementation PR is not evidence that a tool is deployed in this session.
 
-## Step 0: Discover and frame the run
+## Step 0: Discover, show what exists, ask what to connect
 
-Start from the user's intent, such as "connect Snowflake". Use the request and available reads
-before asking questions:
+Invoking this workflow sets the scene for the rest of the conversation: discover the account,
+show the customer what they already have and what can be added, then let them lead. The rules
+above and the steps below keep applying to every later turn, however the customer phrases it.
+
+**0a. Discover.** Read before asking anything:
 
 - `get_current_user`: identify the account; stop if `account_frozen`. Confirm account ambiguity.
-- `list_deployments` before provisioning; also inspect `list_warehouses` and `list_connections`
-  for the target account/host and environment. Follow `next_cursor` while `has_more` on paginated
-  lists, including credentials. Read the relevant agent/store details when needed.
+- `list_deployments`, `list_collection_agents`, `list_collection_data_stores`, `list_warehouses`
+  and `list_connections`. Follow `next_cursor` while `has_more` on every paginated list,
+  including credentials later. Read agent/store details only when a choice depends on them.
+
+**0b. Show.** Present a short inventory in customer language: each deployment with its type,
+platform and `enabled`, the agent or data store behind it, and the existing warehouses with their
+connections. An empty account is an answer too; say so. Follow it with what can be added, from
+this session's tools, as the support section of the connection-inputs reference describes:
+which integrations can be connected, and with which credential options. Keep both to a few lines;
+do not dump raw ids unless asked.
+
+**0c. Ask what to connect, then follow the customer.** If the request already names the
+integrations ("connect Snowflake and Postgres"), skip the question. Otherwise ask one open
+question, such as "What would you like to connect?", and stop. Do not open with deployment or
+credential questions; they come after the target is known.
+
+Several integrations can be onboarded in one run. For each one requested:
+
+- **Check support first**, from the tool schemas in this session as the connection-inputs
+  support section describes, before
+  any other question about it. When the integration cannot be connected through these tools on
+  any deployment, or only through the UI on the one the customer wants, say so now and offer the
+  UI handoff or a route that is supported; do not provision anything for it.
+- **Resolve the route** (Step 1): reuse a compatible deployment from the inventory where one fits.
+  Integrations that fit the same deployment share it; do not create one per integration.
+- **Credentials, warehouse, connection, validation** (Steps 2 to 5) run per integration. The
+  inputs checklist (rule 8) covers every integration in the plan, and missing values for all of
+  them are asked in one message.
+
+Also in discovery:
+
 - Infer the integration's cloud and region from reliable existing information; otherwise ask
   only when needed to choose or configure the route. Do not infer an agent's cloud from the
   product name (Snowflake runs on multiple clouds), or assume its region from an example.
@@ -277,15 +318,16 @@ Otherwise the deployment from Step 1 decides what is possible:
 - **Collection agent** → credentials can stay in the customer's store (self-hosted, below). The
   agent reads the secret at query time, so its role or identity needs read access to that secret.
 - **Hosted cloud node or data-store deployment** → nothing on the customer's side can be read, so
-  the credentials are Monte Carlo managed. Through the v2 API that is the Snowflake key pair
-  (CLI or Terraform step, last row below). Any other connection type on these deployments is
-  onboarded in the UI today. Hand off with the selected deployment and any existing IDs; do not
+  the credentials are Monte Carlo managed. Through the v2 API that is a managed type, discovered
+  as the connection-inputs support section describes (CLI or Terraform step, last row below). A
+  type that is not managed is onboarded in the UI on these deployments. Hand off with the selected deployment and any existing IDs; do not
   create an empty warehouse until its reuse in that UI flow is established.
 
 Use the credential policy already resolved in Step 1; ask only for the missing reference or
 authentication details. Those details are the connection type's rows in the connection-inputs
-reference (rule 8): for a Snowflake key pair, the account, the user the key is set on, the
-warehouse and the key file's path (only for the customer's command; never open it, rule 2); for
+reference (rule 8): for managed credentials, the create operation's non-secret fields and the
+secret file's path (only for the customer's command; never open it, rule 2), as in the Snowflake
+key-pair example; for
 a self-hosted reference, the store's fields plus the customer's confirmation that the secret
 carries the type's required keys. If the policy changes, revisit the deployment choice before
 writing:
@@ -297,7 +339,7 @@ writing:
 | Azure Key Vault | `create_azure_key_vault_credentials(connection_type, akv_secret, akv_vault_name and/or akv_vault_url)` | |
 | Environment variable on the agent | `create_env_var_credentials(connection_type, env_var_name (MCD_…), kms_key_id?)` | Only with a collection agent the customer runs; the cloud node has no customer-set variables. |
 | File on the agent | `create_file_credentials(connection_type, file_path)` | Generic Kubernetes/Docker: mount the JSON file into the agent; use its container path. A path on the customer's machine (`~/Downloads/key.p8`) is not a file credential: it goes into the CLI or Terraform step. |
-| Monte Carlo stores it (Snowflake key pair) | **not a tool** | Emit `montecarlo credentials create snowflake --account … --user … --warehouse … --private-key @key.p8` or the `montecarlo_snowflake_credentials` resource with `file(...)`. The user runs it and gives back the `id`. |
+| Monte Carlo stores it (a managed type) | **not a tool** | Offer both (rule 6): `montecarlo credentials create <type> …` with each secret field as `@<path>` or `--<field>-prompt`, never a literal; or the `montecarlo_<type>_credentials` resource with the secret in `<field>_wo` (rule 7). For a Snowflake key pair: `montecarlo credentials create snowflake --account … --user … --warehouse … --private-key @key.p8`. The user runs it and gives back the `id`. |
 
 **Validate before creating.** Each self-hosted create has a matching validate that takes the same
 arguments plus `deployment_id`: `validate_aws_secrets_manager_credentials`, `validate_gcp_secret_manager_credentials`, `validate_azure_key_vault_credentials`, `validate_env_var_credentials`, `validate_file_credentials`. It creates nothing and
@@ -305,10 +347,10 @@ returns a run: read it with `get_validation_run` as in Step 5, and create only w
 has `passed: true`. If any has `passed: false`, relay its errors' `friendly_message` and
 `resolution` and stop before creating anything. A failure here is almost always the agent's access
 to the secret (IAM grant, trust policy, service-account role, Key Vault policy), and it is cheapest
-to fix now, before a warehouse or connection exists. For a Snowflake key pair Monte Carlo will
-store, emit the validate step beside the create step:
-`montecarlo credentials validate-snowflake-credentials --deployment-id … --account … --user … --private-key @key.p8`
-(not an MCP tool: the key travels in the request). When the session does not serve these tools,
+to fix now, before a warehouse or connection exists. For managed credentials, emit the validate
+step beside the create step, with the same fields plus `--deployment-id`: for a Snowflake key pair,
+`montecarlo credentials validate snowflake --deployment-id … --account … --user … --private-key @key.p8`
+(not an MCP tool: the secret travels in the request). When the session does not serve these tools,
 skip this check; Step 5 still validates the connection.
 
 Two Snowflake key formats belong to different paths; do not interchange them:
@@ -333,7 +375,9 @@ confirm any ambiguity. Do not take the first warehouse with a matching type.
 
 If none represents the target, `create_warehouse(name, deployment_id, type=<warehouse type>)` or
 `create_warehouse(name, deployment_id, connection_type=<connection type>)`. Send exactly one of
-`type` / `connection_type`; names are unique per type. Carry and record the `warehouse_id`.
+`type` / `connection_type`; names are unique per type. For a connection type that is not itself a
+warehouse type, send `connection_type`: a refusal means the API cannot map it, nothing was
+created, and the integration is handed off to the UI (connection-inputs support section). Carry and record the `warehouse_id`.
 
 ## Step 4: The connection
 
@@ -387,7 +431,10 @@ Do **not** substitute any other tool for validation. If the session does not ser
 
 ## Step 6: Summary (always)
 
-Finish every run, including an aborted one, with:
+Finish every run, including an aborted one, with the block below. With several integrations,
+repeat the credentials, warehouse, connection and validation lines under a heading per
+integration, and list any integration that was not supported, with its handoff, under *Pending
+on your side*.
 
 ```
 Account: <account_name> (<account_id>)
